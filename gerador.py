@@ -1,8 +1,6 @@
 import random
-from sentence_transformers import SentenceTransformer, util
-
-print("Carregando modelo e gerando cache de vetores (Isso pode levar alguns segundos)...")
-modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+from sentence_transformers import util
+import motor
 
 VOCABULARIO_BASE = [
     "fogo", "calor", "sol", "verão", "praia", "areia", "mar", "oceano", 
@@ -11,7 +9,7 @@ VOCABULARIO_BASE = [
     "terra", "planeta", "espaço", "estrela", "luz", "dia", "noite"
 ]
 
-CACHE_VETORES = {palavra: modelo.encode(palavra) for palavra in VOCABULARIO_BASE}
+CACHE_VETORES = {palavra: motor.modelo.encode(palavra) for palavra in VOCABULARIO_BASE}
 
 def buscar_proxima_palavra(palavra_atual, caminho_atual):
     """Busca uma palavra no vocabulário que tenha >= 40% de similaridade, mas que não esteja no caminho."""
