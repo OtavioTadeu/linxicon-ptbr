@@ -1,11 +1,9 @@
 from sentence_transformers import SentenceTransformer, util
 from spellchecker import SpellChecker
 
-# 1. Carrega o modelo semântico (Pesado)
 print("Carregando o modelo semântico (IA)...")
 modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
-# 2. Carrega o dicionário (Leve e rápido)
 print("Carregando o dicionário de português...")
 dicionario = SpellChecker(language='pt')
 
@@ -16,8 +14,6 @@ def calcular_similaridade(palavra1, palavra2):
     return similaridade * 100
 
 def eh_palavra_valida(palavra):
-    # A função .known() verifica se a palavra existe na base de dados
-    # Se retornar um conjunto vazio, a palavra não existe no idioma
     return len(dicionario.known([palavra])) > 0
 
 if __name__ == "__main__":
@@ -29,7 +25,6 @@ if __name__ == "__main__":
         if p1 == 'sair':
             break
             
-        # O Porteiro entra em ação aqui
         if not eh_palavra_valida(p1):
             print(f"❌ Bloqueado: A palavra '{p1}' não foi encontrada no dicionário.")
             continue
@@ -38,12 +33,9 @@ if __name__ == "__main__":
         if p2 == 'sair':
             break
             
-        # Valida a segunda palavra também
         if not eh_palavra_valida(p2):
             print(f"❌ Bloqueado: A palavra '{p2}' não foi encontrada no dicionário.")
             continue
-        
-        # Se as duas passaram, fazemos o cálculo pesado
         porcentagem = calcular_similaridade(p1, p2)
         
         print(f"✅ Similaridade entre '{p1}' e '{p2}': {porcentagem:.1f}%")
