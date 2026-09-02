@@ -1,20 +1,24 @@
 from sentence_transformers import SentenceTransformer, util
-from spellchecker import SpellChecker
 
 print("Carregando o modelo semântico (IA)...")
 modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
-print("Carregando o dicionário de português...")
-dicionario = SpellChecker(language='pt')
+print("Carregando o dicionário em memória...")
+try:
+    with open('dicionario.txt', 'r', encoding='utf-8') as arquivo:
+        vocabulario_ptbr = set(linha.strip().lower() for linha in arquivo)
+except FileNotFoundError:
+    print("❌ Erro: O arquivo 'dicionario.txt' não foi encontrado.")
+    print("Rode o script 'baixar_dicionario.py' primeiro!")
+    exit()
 
 def calcular_similaridade(palavra1, palavra2):
     vetor1 = modelo.encode(palavra1)
     vetor2 = modelo.encode(palavra2)
-    similaridade = util.cos_sim(vetor1, vetor2).item()
-    return similaridade * 100
+    return util.cos_sim(vetor1, vetor2).item() * 100
 
 def eh_palavra_valida(palavra):
-    return len(dicionario.known([palavra])) > 0
+    return palavra in vocabulario_ptbr
 
 if __name__ == "__main__":
     print("\n--- Validador Semântico Linxicon (PT-BR) ---")
