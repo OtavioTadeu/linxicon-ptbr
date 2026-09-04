@@ -1,22 +1,98 @@
 import random
+from datetime import date
 from sentence_transformers import util
 import motor
 
 CONCEITOS_BASE = [
-    "tempo", "espaço", "vida", "morte", "fogo", "água", "terra", "ar",
-    "luz", "sombra", "sol", "lua", "estrela", "planeta", "animal", "planta",
-    "homem", "mulher", "criança", "velho", "amor", "ódio", "paz", "guerra",
-    "cidade", "floresta", "oceano", "deserto", "montanha", "vale", "pedra",
-    "ciência", "magia", "tecnologia", "natureza", "mente", "corpo", "alma",
-    "sonho", "realidade", "passado", "futuro", "verdade", "mentira", "chuva",
-    "rei", "escravo", "deus", "humano", "frio", "calor", "dia", "noite",
-    "viagem", "casa", "caminho", "destino", "início", "fim", "som", "silêncio"
+    # Elementos e natureza
+    "fogo", "água", "terra", "ar", "chuva", "vento", "trovão", "neve",
+    "gelo", "tempestade", "vulcão", "fumaça", "lama", "poeira", "cinza",
+
+    # Cosmos e geografia
+    "sol", "lua", "estrela", "planeta", "céu", "horizonte", "abismo",
+    "oceano", "deserto", "montanha", "vale", "ilha", "rio", "caverna",
+    "floresta", "campo", "jardim", "pântano", "praia",
+
+    # Flora e fauna
+    "animal", "planta", "flor", "raiz", "semente", "árvore", "fruta",
+    "pássaro", "peixe", "lobo", "serpente", "cavalo", "inseto", "fera",
+
+    # Corpo humano
+    "corpo", "sangue", "osso", "coração", "olho", "mão", "pele",
+    "cérebro", "músculo", "nervo", "fôlego", "lágrima", "suor",
+
+    # Pessoas e ciclo da vida
+    "homem", "mulher", "criança", "velho", "humano", "bebê", "guerreiro",
+    "sábio", "estranho", "herói", "fantasma", "gigante", "anão",
+
+    # Emoções e sentimentos
+    "amor", "ódio", "medo", "alegria", "tristeza", "raiva", "esperança",
+    "saudade", "orgulho", "vergonha", "culpa", "coragem", "paixão",
+    "solidão", "prazer", "angústia", "inveja", "gratidão",
+
+    # Mente e conhecimento
+    "mente", "alma", "sonho", "memória", "pensamento", "sabedoria",
+    "loucura", "consciência", "instinto", "imaginação", "razão",
+
+    # Tempo e existência
+    "tempo", "espaço", "vida", "morte", "passado", "futuro", "eternidade",
+    "momento", "início", "fim", "destino", "acaso", "ciclo",
+
+    # Sociedade e poder
+    "rei", "escravo", "povo", "família", "lei", "justiça", "liberdade",
+    "poder", "riqueza", "pobreza", "revolução", "trono", "exílio",
+
+    # Conflito e paz
+    "paz", "guerra", "batalha", "vitória", "derrota", "conquista",
+    "vingança", "perdão", "traição", "aliança", "cerco", "fuga",
+
+    # Verdade e ilusão
+    "verdade", "mentira", "segredo", "mistério", "realidade",
+    "ilusão", "profecia", "enigma", "promessa", "silêncio",
+
+    # Luz, sombra e clima
+    "luz", "sombra", "escuridão", "aurora", "crepúsculo",
+    "dia", "noite", "frio", "calor", "bruma",
+
+    # Objetos e construções
+    "espada", "escudo", "coroa", "chave", "porta", "ponte", "torre",
+    "barco", "muro", "altar", "tumba", "bandeira", "corrente", "armadilha",
+
+    # Matéria e ofícios
+    "ferro", "ouro", "prata", "madeira", "vidro", "pedra", "cristal",
+    "tecido", "corda", "tinta", "veneno", "remédio",
+
+    # Arte, cultura e espiritualidade
+    "música", "dança", "pintura", "teatro", "livro", "palavra", "canção",
+    "ritual", "magia", "ciência", "tecnologia", "deus", "templo", "oração",
+
+    # Alimento e sustento
+    "pão", "vinho", "mel", "carne", "sal", "trigo", "colheita", "banquete",
+
+    # Viagem e espaço
+    "viagem", "casa", "caminho", "cidade", "navio", "mapa",
+    "fronteira", "labirinto", "refúgio", "ruína",
+
+    # Natureza abstrata
+    "natureza", "caos", "ordem", "equilíbrio", "força",
+    "fragilidade", "beleza", "perigo", "sorte", "sacrifício",
+
+    # Som
+    "som", "eco", "grito", "sussurro", "melodia", "ruído",
 ]
 
-print("Calculando IA para os conceitos base...")
-CACHE_VETORES = {p: motor.modelo.encode(p) for p in CONCEITOS_BASE}
+# Remove possíveis duplicatas mantendo a ordem
+CONCEITOS_BASE = list(dict.fromkeys(CONCEITOS_BASE))
 
-LIMITE_CONEXAO = 50.0 
+# #20: Validar conceitos contra o dicionário
+motor.validar_conceitos(CONCEITOS_BASE)
+
+print(f"Calculando IA para {len(CONCEITOS_BASE)} conceitos base (batch)...")
+_vetores = motor.modelo.encode(CONCEITOS_BASE)
+CACHE_VETORES = {p: v for p, v in zip(CONCEITOS_BASE, _vetores)}
+
+# Cache do desafio diário (gera uma vez por dia)
+_cache_diario = {"data": None, "caminho": None}
 
 def buscar_proxima_palavra(palavra_atual, caminho_atual):
     vetor_atual = CACHE_VETORES[palavra_atual]
@@ -30,14 +106,15 @@ def buscar_proxima_palavra(palavra_atual, caminho_atual):
         vetor_candidata = CACHE_VETORES[candidata]
         similaridade = util.cos_sim(vetor_atual, vetor_candidata).item() * 100
 
-        if LIMITE_CONEXAO <= similaridade <= 75.0:
+        if motor.THRESHOLD <= similaridade <= 75.0:
             return candidata, similaridade
             
     return None, 0
 
-def gerar_caminho(qtd_saltos=3, tolerancia_inicial=15.0):
+def _gerar_caminho_interno(qtd_saltos=3, tolerancia_inicial=15.0):
+    """Gera um caminho sem seed — lógica pura do algoritmo."""
 
-    tolerancia_maxima = LIMITE_CONEXAO - 1.0 
+    tolerancia_maxima = motor.THRESHOLD - 1.0 
     tolerancia_atual = tolerancia_inicial
     
     limite_tentativas = 500
@@ -77,7 +154,26 @@ def gerar_caminho(qtd_saltos=3, tolerancia_inicial=15.0):
     if tolerancia_atual < tolerancia_maxima:
         nova_tolerancia = min(tolerancia_atual + 5.0, tolerancia_maxima)
         print(f"Afrouxando bloqueio de atalhos para {nova_tolerancia}%...")
-        return gerar_caminho(qtd_saltos, nova_tolerancia)
+        return _gerar_caminho_interno(qtd_saltos, nova_tolerancia)
         
     print("Caminho ideal muito rígido. Reduzindo para 2 saltos complexos.")
-    return gerar_caminho(qtd_saltos=2, tolerancia_inicial=20.0)
+    return _gerar_caminho_interno(qtd_saltos=2, tolerancia_inicial=20.0)
+
+def gerar_desafio_diario(qtd_saltos=4):
+    """Retorna o mesmo caminho durante o dia inteiro (seed por data)."""
+    hoje = str(date.today())
+    
+    if _cache_diario["data"] == hoje:
+        return _cache_diario["caminho"]
+    
+    random.seed(hash(hoje))
+    caminho = _gerar_caminho_interno(qtd_saltos)
+    random.seed()  # restaura aleatoriedade para modo prática
+    
+    _cache_diario["data"] = hoje
+    _cache_diario["caminho"] = caminho
+    return caminho
+
+def gerar_pratica(qtd_saltos=4):
+    """Gera um caminho aleatório para modo prática (sem seed fixa)."""
+    return _gerar_caminho_interno(qtd_saltos)

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linxicon PT-BR — Conecte palavras pelo significado</title>
+    <meta name="description" content="Jogo diário de associação de palavras. Conecte dois conceitos criando uma ponte de significados!">
+    <meta property="og:title" content="Linxicon PT-BR">
+    <meta property="og:description" content="Conecte duas palavras aleatórias criando uma cadeia de significados!">
+    <meta property="og:type" content="website">
+
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=McLaren&display=swap" rel="stylesheet">
+
+    <!-- Vis.js -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-esquerda">
+            <div class="logo-icone">L</div>
+            <h1>Linxicon</h1>
+        </div>
+        <div class="header-direita">
+            <div class="modo-tabs">
+                <button class="modo-tab ativo" id="tab-diario" onclick="trocarModo('diario')">Diário</button>
+                <button class="modo-tab" id="tab-pratica" onclick="trocarModo('pratica')">Prática</button>
+            </div>
+            <button class="btn-icone" id="btn-tema" onclick="alternarTema()" title="Alternar tema">🌙</button>
+        </div>
+    </header>
+
+    <!-- Info Bar -->
+    <div class="info-bar">
+        <div class="palavras-alvo">
+            <span class="palavra-tag origem" id="tag-origem">...</span>
+            <span class="seta-conexao">→</span>
+            <span class="palavra-tag destino" id="tag-destino">...</span>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                Jogadas: <span class="stat-valor" id="contador-jogadas">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grafo -->
+    <main>
+        <div id="grafo-jogo"></div>
+    </main>
+
+    <!-- Controles -->
+    <div class="controles">
+        <div class="input-wrapper">
+            <input type="text" id="input-palavra" placeholder="Digite uma palavra associada..." autocomplete="off">
+        </div>
+        <button id="btn-conectar" onclick="tentarPalavra()">
+            <span class="spinner" id="spinner"></span>
+            Conectar
+        </button>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modal de Vitória -->
+    <div class="modal-overlay" id="modal-vitoria">
+        <div class="modal">
+            <h2>🎉 Vitória!</h2>
+            <p class="subtitulo">Você conectou as palavras com sucesso!</p>
+            <div class="caminho-vitoria" id="caminho-vitoria"></div>
+            <div class="stats-vitoria">
+                <div class="stat-box">
+                    <div class="numero" id="stat-jogadas">0</div>
+                    <div class="label">Jogadas</div>
+                </div>
+                <div class="stat-box">
+                    <div class="numero" id="stat-ponte">0</div>
+                    <div class="label">Ponte</div>
+                </div>
+            </div>
+            <div class="modal-botoes">
+                <button class="btn-secundario" onclick="compartilhar()">📋 Compartilhar</button>
+                <button class="btn-primario" onclick="jogarNovamente()">Jogar novamente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        Criado por <strong>Tadeu</strong> · Motor semântico com MiniLM · 
+        Inspirado no <a href="https://linxicon.com" target="_blank">Linxicon</a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
