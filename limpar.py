@@ -1,4 +1,3 @@
-# Coloque o nome do seu arquivo ORIGINAL (bruto, com maiúsculas) aqui
 arquivo_entrada = "br-utf8.txt" 
 arquivo_saida = "dicionario_limpo.txt"
 
@@ -39,7 +38,7 @@ CONJUNCOES = {
 PALAVRAS_EXCLUIDAS = ARTIGOS | PRONOMES | CONJUNCOES
 lista_negra = {"merda", "caralho", "porra", "cacete"}
 
-palavras_limpas = set() # Usar um Set aqui já garante que não haverá repetidas!
+palavras_limpas = set()
 palavras_removidas = 0
 
 print("Analisando o arquivo bruto e limpando os dados...")
@@ -51,15 +50,12 @@ with open(arquivo_entrada, "r", encoding="utf-8") as f:
         if not palavra_bruta:
             continue
             
-        # 1. A sua regra de Nomes Próprios
         if palavra_bruta[0].isupper():
             palavras_removidas += 1
             continue
             
-        # Converte para minúscula para os próximos testes
         palavra = palavra_bruta.lower()
         
-        # 2. Restante das Regras
         tamanho_valido = 2 <= len(palavra) <= 15
         sem_hifen = "-" not in palavra
         sem_espaco = " " not in palavra
@@ -67,11 +63,10 @@ with open(arquivo_entrada, "r", encoding="utf-8") as f:
         nao_e_stopword = palavra not in PALAVRAS_EXCLUIDAS
         
         if tamanho_valido and sem_hifen and sem_espaco and nao_e_palavrao and nao_e_stopword:
-            palavras_limpas.add(palavra) # Adiciona no Set
+            palavras_limpas.add(palavra)
         else:
             palavras_removidas += 1
 
-# Transforma em lista e ordena alfabeticamente para o arquivo final ficar bonito
 lista_final = sorted(list(palavras_limpas))
 
 with open(arquivo_saida, "w", encoding="utf-8") as f:

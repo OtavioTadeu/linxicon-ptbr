@@ -1,4 +1,3 @@
-// Configuração inicial do Vis.js
 const container = document.getElementById('grafo-jogo');
 let nodes = new vis.DataSet([]);
 let edges = new vis.DataSet([]);
@@ -9,17 +8,14 @@ const configuracaoVis = {
     physics: { barnesHut: { springLength: 150, springConstant: 0.05 } }
 };
 
-// Busca o desafio na sua API Python
 async function iniciarJogo() {
     try {
         const resposta = await fetch('http://127.0.0.1:8000/desafio-diario');
         const dados = await resposta.json();
 
-        // Adiciona as duas palavras extremas na tela
         nodes.add({ id: 1, label: dados.palavra_inicial, color: '#ffcccb' });
         nodes.add({ id: 2, label: dados.palavra_final, color: '#cce5ff' });
 
-        // Inicializa a física do grafo
         const dadosGrafo = { nodes: nodes, edges: edges };
         network = new vis.Network(container, dadosGrafo, configuracaoVis);
 
@@ -30,10 +26,8 @@ async function iniciarJogo() {
     }
 }
 
-// Inicia automaticamente ao abrir a página
 iniciarJogo();
 
-// ... (mantenha o código anterior lá em cima) ...
 
 async function tentarPalavra() {
     const inputEl = document.getElementById('input-palavra');
@@ -41,7 +35,6 @@ async function tentarPalavra() {
 
     if (!palavraJogada) return;
 
-    // 1. Evita palavras repetidas na tela
     const nosExistentes = nodes.get();
     if (nosExistentes.some(n => n.label === palavraJogada)) {
         alert("Você já jogou essa palavra!");
