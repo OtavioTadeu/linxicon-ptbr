@@ -1,5 +1,5 @@
 // ========== ESTADO DO JOGO ==========
-const API = 'http://127.0.0.1:8000';
+const API = '';
 const container = document.getElementById('grafo-jogo');
 let nodes = new vis.DataSet([]);
 let edges = new vis.DataSet([]);
