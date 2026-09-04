@@ -5,7 +5,7 @@ modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
 print("Carregando o dicionário em memória...")
 try:
-    with open('dicionario.txt', 'r', encoding='utf-8') as arquivo:
+    with open('dicionario_limpo.txt', 'r', encoding='utf-8') as arquivo:
         vocabulario_ptbr = set(linha.strip().lower() for linha in arquivo)
 except FileNotFoundError:
     print("❌ Erro: O arquivo 'dicionario.txt' não foi encontrado.")
