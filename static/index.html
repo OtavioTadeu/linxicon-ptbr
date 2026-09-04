@@ -39,58 +39,104 @@
         </div>
     </header>
 
-    <!-- Info Bar -->
-    <div class="info-bar">
-        <div class="palavras-alvo">
-            <span class="palavra-tag origem" id="tag-origem">...</span>
-            <span class="seta-conexao">→</span>
-            <span class="palavra-tag destino" id="tag-destino">...</span>
-        </div>
-        <div class="stats">
-            <div class="stat-item">
-                Jogadas: <span class="stat-valor" id="contador-jogadas">0</span>
+    <!-- Game Container (Split Panel) -->
+    <div class="game-container">
+
+        <!-- Painel Lateral Esquerdo -->
+        <aside class="painel-lateral">
+            <!-- Modo e Palavras Alvo -->
+            <div class="painel-secao">
+                <div class="modo-label" id="modo-label">Desafio Diário</div>
+                <div class="palavras-alvo">
+                    <span class="palavra-tag origem" id="tag-origem">...</span>
+                    <span class="seta-conexao">→</span>
+                    <span class="palavra-tag destino" id="tag-destino">...</span>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Grafo -->
-    <main>
-        <div id="grafo-jogo"></div>
-    </main>
+            <!-- Input -->
+            <div class="painel-secao input-secao">
+                <label for="input-palavra">Adicione uma palavra ao grafo:</label>
+                <div class="input-grupo">
+                    <input type="text" id="input-palavra" placeholder="Digite uma palavra..." autocomplete="off">
+                    <button id="btn-conectar" onclick="tentarPalavra()">
+                        <span class="spinner" id="spinner"></span>
+                        Conectar
+                    </button>
+                </div>
+            </div>
 
-    <!-- Controles -->
-    <div class="controles">
-        <div class="input-wrapper">
-            <input type="text" id="input-palavra" placeholder="Digite uma palavra associada..." autocomplete="off">
+            <!-- Estatísticas do tabuleiro -->
+            <div class="painel-secao stats-tabuleiro">
+                <p>São <strong id="contagem-palavras">2</strong> palavras no tabuleiro.</p>
+                <p>Jogadas: <strong id="contador-jogadas">0</strong></p>
+            </div>
+
+            <!-- Menor distância -->
+            <div class="painel-secao" id="secao-menor-distancia" style="display:none;">
+                <p class="menor-distancia-texto">
+                    A menor distância entre 
+                    <span class="cor-origem" id="gap-origem"></span> e 
+                    <span class="cor-destino" id="gap-destino"></span> é:
+                </p>
+                <div class="gap-display" id="gap-display"></div>
+            </div>
+
+            <!-- Lista de Links -->
+            <div class="painel-secao">
+                <h3 class="secao-titulo">Links</h3>
+                <div class="lista-links" id="lista-links">
+                    <p class="links-vazio">Nenhuma conexão ainda.</p>
+                </div>
+            </div>
+
+            <!-- Menor caminho (após vitória) -->
+            <div class="painel-secao" id="secao-menor-caminho" style="display:none;">
+                <h3 class="secao-titulo">Menor caminho</h3>
+                <div class="lista-links" id="menor-caminho"></div>
+            </div>
+        </aside>
+
+        <!-- Painel do Grafo -->
+        <div class="painel-grafo">
+            <div id="grafo-jogo"></div>
         </div>
-        <button id="btn-conectar" onclick="tentarPalavra()">
-            <span class="spinner" id="spinner"></span>
-            Conectar
-        </button>
+
     </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
     <!-- Modal de Vitória -->
-    <div class="modal-overlay" id="modal-vitoria">
+    <div class="modal-overlay" id="modal-vitoria" onclick="fecharModalOverlay(event)">
         <div class="modal">
-            <h2>🎉 Vitória!</h2>
+            <button class="modal-fechar" onclick="fecharModal()" title="Fechar">&times;</button>
+            <h2>Vitória!</h2>
             <p class="subtitulo">Você conectou as palavras com sucesso!</p>
-            <div class="caminho-vitoria" id="caminho-vitoria"></div>
+            
+            <!-- Stats acumuladas -->
             <div class="stats-vitoria">
                 <div class="stat-box">
-                    <div class="numero" id="stat-jogadas">0</div>
-                    <div class="label">Jogadas</div>
+                    <div class="numero" id="stat-partidas">0</div>
+                    <div class="label">Partidas</div>
                 </div>
                 <div class="stat-box">
-                    <div class="numero" id="stat-ponte">0</div>
-                    <div class="label">Ponte</div>
+                    <div class="numero" id="stat-vitorias">0</div>
+                    <div class="label">Vitórias</div>
+                </div>
+                <div class="stat-box">
+                    <div class="numero" id="stat-streak-atual">0</div>
+                    <div class="label">Streak</div>
+                </div>
+                <div class="stat-box">
+                    <div class="numero" id="stat-streak-max">0</div>
+                    <div class="label">Máx.</div>
                 </div>
             </div>
+
             <div class="modal-botoes">
                 <button class="btn-secundario" onclick="compartilhar()">📋 Compartilhar</button>
-                <button class="btn-primario" onclick="jogarNovamente()">Jogar novamente</button>
+                <button class="btn-primario" onclick="jogarNovamente()">🎲 Prática</button>
             </div>
         </div>
     </div>

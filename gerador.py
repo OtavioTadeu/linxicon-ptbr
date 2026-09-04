@@ -112,7 +112,13 @@ def buscar_proxima_palavra(palavra_atual, caminho_atual):
     return None, 0
 
 def _gerar_caminho_interno(qtd_saltos=3, tolerancia_inicial=15.0):
-    """Gera um caminho sem seed — lógica pura do algoritmo."""
+    """Gera um caminho sem seed — lógica pura do algoritmo.
+    
+    Garantias de dificuldade:
+    - Palavras não-adjacentes no caminho não se conectam
+    - Origem e destino possuem baixa similaridade direta (<30%)
+    - Nenhum conceito base conecta simultaneamente origem e destino
+    """
 
     tolerancia_maxima = motor.THRESHOLD - 1.0 
     tolerancia_atual = tolerancia_inicial
@@ -134,6 +140,31 @@ def _gerar_caminho_interno(qtd_saltos=3, tolerancia_inicial=15.0):
                 break
                 
         if len(caminho) == qtd_saltos + 1:
+            origem = caminho[0]
+            destino = caminho[-1]
+            
+            # Verificar que origem-destino são suficientemente distantes
+            v_origem = CACHE_VETORES[origem]
+            v_destino = CACHE_VETORES[destino]
+            sim_direta = util.cos_sim(v_origem, v_destino).item() * 100
+            if sim_direta >= 30.0:
+                continue  # Muito fácil — jogador poderia conectar direto
+            
+            # Verificar que nenhum conceito base conecta ambos ao mesmo tempo
+            tem_ponte_trivial = False
+            for conceito in CONCEITOS_BASE:
+                if conceito in caminho:
+                    continue
+                v_c = CACHE_VETORES[conceito]
+                sim_a = util.cos_sim(v_origem, v_c).item() * 100
+                sim_b = util.cos_sim(v_destino, v_c).item() * 100
+                if sim_a >= motor.THRESHOLD and sim_b >= motor.THRESHOLD:
+                    tem_ponte_trivial = True
+                    break
+            if tem_ponte_trivial:
+                continue  # Existe uma palavra que serve de atalho total
+
+            # Verificar anti-atalho: palavras não-adjacentes no caminho
             tem_atalho = False
             
             for i in range(len(caminho)):
@@ -149,6 +180,7 @@ def _gerar_caminho_interno(qtd_saltos=3, tolerancia_inicial=15.0):
                     break
             
             if not tem_atalho:
+                print(f"[GERADOR] Caminho: {caminho} (sim direta: {sim_direta:.1f}%)")
                 return caminho
                 
     if tolerancia_atual < tolerancia_maxima:
@@ -156,8 +188,9 @@ def _gerar_caminho_interno(qtd_saltos=3, tolerancia_inicial=15.0):
         print(f"Afrouxando bloqueio de atalhos para {nova_tolerancia}%...")
         return _gerar_caminho_interno(qtd_saltos, nova_tolerancia)
         
-    print("Caminho ideal muito rígido. Reduzindo para 2 saltos complexos.")
+    print("Caminho ideal muito rigido. Reduzindo para 2 saltos complexos.")
     return _gerar_caminho_interno(qtd_saltos=2, tolerancia_inicial=20.0)
+
 
 def gerar_desafio_diario(qtd_saltos=4):
     """Retorna o mesmo caminho durante o dia inteiro (seed por data)."""
