@@ -32,7 +32,7 @@ def validar_conexao(tentativa: Tentativa):
         "palavra_alvo": p1,
         "palavra_jogada": p2,
         "similaridade": round(porcentagem, 1),
-        "conectou": porcentagem >= 40.0
+        "conectou": porcentagem >= 50.0
     }
 
 @app.get("/desafio-diario")

@@ -2,15 +2,25 @@ import random
 from sentence_transformers import util
 import motor
 
-print("Carregando o vocabulário para o gerador...")
-with open('dicionario_limpo.txt', 'r', encoding='utf-8') as f:
-    VOCABULARIO_BASE = [linha.strip() for linha in f]
+CONCEITOS_BASE = [
+    "tempo", "espaço", "vida", "morte", "fogo", "água", "terra", "ar",
+    "luz", "sombra", "sol", "lua", "estrela", "planeta", "animal", "planta",
+    "homem", "mulher", "criança", "velho", "amor", "ódio", "paz", "guerra",
+    "cidade", "floresta", "oceano", "deserto", "montanha", "vale", "pedra",
+    "ciência", "magia", "tecnologia", "natureza", "mente", "corpo", "alma",
+    "sonho", "realidade", "passado", "futuro", "verdade", "mentira", "chuva",
+    "rei", "escravo", "deus", "humano", "frio", "calor", "dia", "noite",
+    "viagem", "casa", "caminho", "destino", "início", "fim", "som", "silêncio"
+]
+
+print("Calculando IA para os conceitos base...")
+CACHE_VETORES = {p: motor.modelo.encode(p) for p in CONCEITOS_BASE}
+
+LIMITE_CONEXAO = 50.0 
 
 def buscar_proxima_palavra(palavra_atual, caminho_atual):
-    """Busca uma palavra no vocabulário que tenha >= 40% de similaridade, mas que não esteja no caminho."""
     vetor_atual = CACHE_VETORES[palavra_atual]
-    
-    opcoes = list(VOCABULARIO_BASE)
+    opcoes = list(CONCEITOS_BASE)
     random.shuffle(opcoes)
     
     for candidata in opcoes:
@@ -19,19 +29,23 @@ def buscar_proxima_palavra(palavra_atual, caminho_atual):
             
         vetor_candidata = CACHE_VETORES[candidata]
         similaridade = util.cos_sim(vetor_atual, vetor_candidata).item() * 100
-        
-        if similaridade >= 40.0:
+
+        if LIMITE_CONEXAO <= similaridade <= 75.0:
             return candidata, similaridade
             
     return None, 0
 
-def gerar_caminho(qtd_saltos=4, tolerancia=15.0):
-    limite_tentativas = 1000 
+def gerar_caminho(qtd_saltos=3, tolerancia_inicial=15.0):
+
+    tolerancia_maxima = LIMITE_CONEXAO - 1.0 
+    tolerancia_atual = tolerancia_inicial
+    
+    limite_tentativas = 500
     tentativas_atuais = 0
 
     while tentativas_atuais < limite_tentativas:
         tentativas_atuais += 1
-        palavra_inicial = random.choice(VOCABULARIO_BASE)
+        palavra_inicial = random.choice(CONCEITOS_BASE)
         caminho = [palavra_inicial]
         
         for _ in range(qtd_saltos):
@@ -47,13 +61,11 @@ def gerar_caminho(qtd_saltos=4, tolerancia=15.0):
             
             for i in range(len(caminho)):
                 for j in range(i + 2, len(caminho)):
-                    # 3. Lógica "Just In Time" (Sob Demanda)
-                    # Calculamos o vetor APENAS para as 5 palavras sorteadas neste caminho
-                    v1 = motor.modelo.encode(caminho[i])
-                    v2 = motor.modelo.encode(caminho[j])
+                    v1 = CACHE_VETORES[caminho[i]]
+                    v2 = CACHE_VETORES[caminho[j]]
                     sim = util.cos_sim(v1, v2).item() * 100
                     
-                    if sim >= tolerancia:
+                    if sim >= tolerancia_atual:
                         tem_atalho = True
                         break 
                 if tem_atalho:
@@ -62,16 +74,10 @@ def gerar_caminho(qtd_saltos=4, tolerancia=15.0):
             if not tem_atalho:
                 return caminho
                 
-    nova_tolerancia = tolerancia + 5.0
-    print(f"Aviso: Caminho não encontrado. Afrouxando bloqueio de atalhos para {nova_tolerancia}%...")
-    return gerar_caminho(qtd_saltos, nova_tolerancia)
-
-if __name__ == "__main__":
-    print("\n--- Gerador de Desafios Linxicon ---")
-    caminho_gerado = gerar_caminho(qtd_saltos=4)
-    
-    print("\nCaminho secreto gerado pelo sistema:")
-    print(" -> ".join(caminho_gerado))
-    
-    print(f"\nO desafio do dia para o jogador será:")
-    print(f"Conecte: [{caminho_gerado[0]}] até [{caminho_gerado[-1]}]")
+    if tolerancia_atual < tolerancia_maxima:
+        nova_tolerancia = min(tolerancia_atual + 5.0, tolerancia_maxima)
+        print(f"Afrouxando bloqueio de atalhos para {nova_tolerancia}%...")
+        return gerar_caminho(qtd_saltos, nova_tolerancia)
+        
+    print("Caminho ideal muito rígido. Reduzindo para 2 saltos complexos.")
+    return gerar_caminho(qtd_saltos=2, tolerancia_inicial=20.0)
