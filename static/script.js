@@ -294,14 +294,20 @@ async function iniciarJogo(modo) {
             label: palavraInicial,
             color: { background: '#2a2548', border: '#7B68EE' },
             font: { color: '#c4b5fd' },
-            borderWidth: 2
+            borderWidth: 2,
+            fixed: true,
+            x: -250,
+            y: 0
         });
         nodes.add({
             id: 2,
             label: palavraFinal,
             color: { background: '#3a2535', border: '#E87BA8' },
             font: { color: '#f0a0c0' },
-            borderWidth: 2
+            borderWidth: 2,
+            fixed: true,
+            x: 250,
+            y: 0
         });
 
         const dadosGrafo = { nodes, edges };
