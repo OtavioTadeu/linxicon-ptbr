@@ -578,34 +578,35 @@ async function tentarPalavra() {
 
     setLoading(false);
 
+    // Sempre adicionar o nó, mesmo sem conexões
+    nodes.add({
+        id: novoNodeId,
+        label: palavraJogada,
+        color: { background: '#2a2a3e', border: '#888' },
+        font: { color: '#e0e0e0' },
+        borderWidth: 1
+    });
+    proximoId++;
+    totalJogadas++;
+    document.getElementById('contador-jogadas').textContent = totalJogadas;
+    atualizarContagem();
+
+    // Registrar palavra na sessão do backend
+    if (sessionId) {
+        fetch(`${API}/confirmar-palavra`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                palavra: palavraJogada
+            })
+        }).catch(e => console.warn('Erro ao confirmar palavra na sessão:', e));
+    }
+
     if (conectouComAlgo) {
-        // Adicionar nó intermediário com estilo original (elipse transparente)
-        nodes.add({
-            id: novoNodeId,
-            label: palavraJogada,
-            color: { background: '#2a2a3e', border: '#888' },
-            font: { color: '#e0e0e0' },
-            borderWidth: 1
-        });
         edges.add(novasArestas);
-        proximoId++;
-        totalJogadas++;
-        document.getElementById('contador-jogadas').textContent = totalJogadas;
-        atualizarContagem();
         atualizarListaLinks();
         atualizarMenorDistancia();
-
-        // Registrar palavra na sessão do backend
-        if (sessionId) {
-            fetch(`${API}/confirmar-palavra`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    palavra: palavraJogada
-                })
-            }).catch(e => console.warn('Erro ao confirmar palavra na sessão:', e));
-        }
 
         // Efeito visual: flash verde no novo nó
         setTimeout(() => {
@@ -636,16 +637,8 @@ async function tentarPalavra() {
             }
         }
     } else {
-        totalJogadas++;
-        document.getElementById('contador-jogadas').textContent = totalJogadas;
-
-        // Feedback quente/morno/frio
-        const msgs = {
-            quente: `Quase! "${palavraJogada}" chegou a ${maiorSimilaridade}% — só faltou um pouco!`,
-            morno:  `Morno. "${palavraJogada}" atingiu ${maiorSimilaridade}% — tente algo mais próximo.`,
-            frio:   `"${palavraJogada}" está longe (${maiorSimilaridade}%). Pense em outra direção.`
-        };
-        mostrarToast(msgs[feedbackFinal] || msgs.frio, feedbackFinal);
+        // Sem mensagem de rejeição, apenas confirmar que foi para o tabuleiro
+        mostrarToast(`"${palavraJogada}" adicionada ao tabuleiro (sem conexões fortes).`, 'info');
     }
 
     inputEl.value = '';
