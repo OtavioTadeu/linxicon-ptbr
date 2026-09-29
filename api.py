@@ -29,15 +29,10 @@ def limpar_sessoes_antigas():
     for sid in chaves:
         sessoes.pop(sid, None)
 
-class Tentativa(BaseModel):
-    palavra_alvo: str
+class TentativaBatch(BaseModel):
     palavra_jogada: str
+    palavras_existentes: list[str]
     session_id: str | None = None
-    palavras_existentes: list[str] | None = None
-
-class ConfirmarPalavra(BaseModel):
-    session_id: str
-    palavra: str
 
 @app.get("/config")
 async def obter_config():
@@ -45,70 +40,47 @@ async def obter_config():
         "threshold": motor.THRESHOLD
     }
 
-@app.post("/validar-conexao")
-async def validar_conexao(tentativa: Tentativa):
-    p1 = tentativa.palavra_alvo.lower().strip()
-    p2 = tentativa.palavra_jogada.lower().strip()
+@app.post("/validar-todas")
+async def validar_todas(tentativa: TentativaBatch):
+    """Valida a palavra jogada contra todas as palavras do grafo em uma única requisição."""
+    palavra = tentativa.palavra_jogada.lower().strip()
 
-    # #16 Validação de duplicatas: palavra jogada não pode ser igual à palavra alvo
-    if p1 == p2:
+    # Validação de duplicatas contra palavras existentes no grafo
+    existentes = {p.lower().strip() for p in tentativa.palavras_existentes}
+    if palavra in existentes:
         raise HTTPException(
             status_code=400,
-            detail="Palavra duplicada: a palavra jogada não pode ser igual à palavra alvo."
+            detail=f"Palavra duplicada: '{palavra}' já existe no grafo atual."
         )
 
-    # #16 Validação de duplicatas: verificar contra palavras existentes no grafo fornecidas na requisição
-    if tentativa.palavras_existentes:
-        existentes = {p.lower().strip() for p in tentativa.palavras_existentes}
-        if p2 in existentes:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Palavra duplicada: '{p2}' já existe no grafo atual."
-            )
-
-    # #16 Validação de duplicatas: verificar contra sessão ativa no backend
+    # Validação de duplicatas contra sessão ativa no backend
     if tentativa.session_id:
         sessao = sessoes.get(tentativa.session_id)
-        if sessao and p2 in sessao.get("palavras", set()):
+        if sessao and palavra in sessao.get("palavras", set()):
             raise HTTPException(
                 status_code=400,
-                detail=f"Palavra duplicada: '{p2}' já foi utilizada nesta sessão."
+                detail=f"Palavra duplicada: '{palavra}' já foi utilizada nesta sessão."
             )
 
-    # #19 Verificação de palavras válidas assíncrona (threadpool)
-    p1_valida = await asyncio.to_thread(motor.eh_palavra_valida, p1)
-    p2_valida = await asyncio.to_thread(motor.eh_palavra_valida, p2)
-
-    if not p1_valida or not p2_valida:
-        invalida = p1 if not p1_valida else p2
+    # Verificação de palavra válida (threadpool)
+    palavra_valida = await asyncio.to_thread(motor.eh_palavra_valida, palavra)
+    if not palavra_valida:
         raise HTTPException(
             status_code=400,
-            detail=f"Palavra '{invalida}' não reconhecida no vocabulário em português."
+            detail=f"Palavra '{palavra}' não reconhecida no vocabulário em português."
         )
 
-    # #19 Cálculo de similaridade assíncrono via threadpool (não bloqueia event loop)
-    porcentagem = await asyncio.to_thread(motor.calcular_similaridade, p1, p2)
-    
-    return {
-        "palavra_alvo": p1,
-        "palavra_jogada": p2,
-        "similaridade": round(porcentagem, 1),
-        "conectou": porcentagem >= motor.THRESHOLD,
-        "feedback": motor.classificar_feedback(porcentagem)
-    }
+    # Cálculo de similaridades em batch (threadpool — codifica a palavra uma única vez)
+    alvos = [p.lower().strip() for p in tentativa.palavras_existentes]
+    resultados = await asyncio.to_thread(motor.calcular_similaridades_batch, palavra, alvos)
 
-@app.post("/confirmar-palavra")
-async def confirmar_palavra(payload: ConfirmarPalavra):
-    """#16: Confirma e registra uma palavra conectada no histórico da sessão."""
-    sid = payload.session_id
-    if sid not in sessoes:
-        raise HTTPException(status_code=404, detail="Sessão não encontrada.")
-    
-    palavra = payload.palavra.lower().strip()
-    sessoes[sid]["palavras"].add(palavra)
+    # Registrar palavra na sessão automaticamente
+    if tentativa.session_id and tentativa.session_id in sessoes:
+        sessoes[tentativa.session_id]["palavras"].add(palavra)
+
     return {
-        "session_id": sid,
-        "palavras_registradas": list(sessoes[sid]["palavras"])
+        "palavra_jogada": palavra,
+        "resultados": resultados
     }
 
 @app.get("/desafio-diario")

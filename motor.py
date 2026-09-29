@@ -28,6 +28,23 @@ def calcular_similaridade(palavra1, palavra2):
     vetor2 = _obter_vetor(palavra2)
     return util.cos_sim(vetor1, vetor2).item() * 100
 
+def calcular_similaridades_batch(palavra, alvos):
+    """Calcula similaridade da palavra contra uma lista de alvos de uma vez.
+    Codifica a palavra uma única vez e reutiliza o vetor para todas as comparações.
+    """
+    vetor_palavra = _obter_vetor(palavra)
+    resultados = []
+    for alvo in alvos:
+        vetor_alvo = _obter_vetor(alvo)
+        sim = util.cos_sim(vetor_palavra, vetor_alvo).item() * 100
+        resultados.append({
+            "palavra_alvo": alvo,
+            "similaridade": round(sim, 1),
+            "conectou": sim >= THRESHOLD,
+            "feedback": classificar_feedback(sim)
+        })
+    return resultados
+
 def eh_palavra_valida(palavra):
     return palavra in vocabulario_ptbr
 

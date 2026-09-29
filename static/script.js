@@ -509,7 +509,7 @@ async function tentarPalavra() {
 
     if (!palavraJogada) return;
 
-    // Verificar duplicata
+    // Verificar duplicata localmente (feedback imediato)
     const nosExistentes = nodes.get();
     if (nosExistentes.some(n => n.label === palavraJogada)) {
         mostrarToast('Você já jogou essa palavra!', 'morno');
@@ -519,136 +519,124 @@ async function tentarPalavra() {
 
     setLoading(true);
 
-    let conectouComAlgo = false;
-    let novoNodeId = proximoId;
-    let novasArestas = [];
-    let maiorSimilaridade = 0;
-    let feedbackFinal = 'frio';
-
-    for (let node of nosExistentes) {
-        try {
-            const resposta = await fetch(`${API}/validar-conexao`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    palavra_alvo: node.label,
-                    palavra_jogada: palavraJogada,
-                    session_id: sessionId,
-                    palavras_existentes: nosExistentes.map(n => n.label)
-                })
-            });
-
-            if (!resposta.ok) {
-                if (resposta.status === 400) {
-                    const erroJson = await resposta.json().catch(() => ({}));
-                    const detalhe = erroJson.detail || `"${palavraJogada}" é inválida.`;
-                    mostrarToast(detalhe, 'erro');
-                    inputEl.value = '';
-                    setLoading(false);
-                    return;
-                }
-                continue;
-            }
-
-            const dados = await resposta.json();
-
-            // Rastrear maior similaridade para feedback
-            if (dados.similaridade > maiorSimilaridade) {
-                maiorSimilaridade = dados.similaridade;
-                feedbackFinal = dados.feedback;
-            }
-
-            if (dados.conectou) {
-                conectouComAlgo = true;
-                const arestaConfig = {
-                    from: novoNodeId,
-                    to: node.id,
-                    font: { align: 'top', size: 10 }
-                };
-                if (mostrarPorcentagem) {
-                    arestaConfig.label = dados.similaridade + '%';
-                }
-                novasArestas.push(arestaConfig);
-                
-                // Registrar link para o painel lateral
-                registroLinks.push({
-                    de: palavraJogada,
-                    para: node.label,
-                    pct: dados.similaridade
-                });
-            }
-        } catch (erro) {
-            console.error('Erro na comunicação com a API:', erro);
-        }
-    }
-
-    setLoading(false);
-
-    // Sempre adicionar o nó, mesmo sem conexões
-    nodes.add({
-        id: novoNodeId,
-        label: palavraJogada,
-        color: { background: '#2a2a3e', border: '#888' },
-        font: { color: '#e0e0e0' },
-        borderWidth: 1
-    });
-    proximoId++;
-    totalJogadas++;
-    document.getElementById('contador-jogadas').textContent = totalJogadas;
-    atualizarContagem();
-
-    // Registrar palavra na sessão do backend
-    if (sessionId) {
-        fetch(`${API}/confirmar-palavra`, {
+    try {
+        // Uma única requisição para validar contra todas as palavras do grafo
+        const resposta = await fetch(`${API}/validar-todas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
-                palavra: palavraJogada
+                palavra_jogada: palavraJogada,
+                palavras_existentes: nosExistentes.map(n => n.label),
+                session_id: sessionId
             })
-        }).catch(e => console.warn('Erro ao confirmar palavra na sessão:', e));
-    }
+        });
 
-    if (conectouComAlgo) {
-        edges.add(novasArestas);
-        atualizarListaLinks();
-        atualizarMenorDistancia();
+        if (!resposta.ok) {
+            const erroJson = await resposta.json().catch(() => ({}));
+            const detalhe = erroJson.detail || `"${palavraJogada}" é inválida.`;
+            mostrarToast(detalhe, 'erro');
+            inputEl.value = '';
+            setLoading(false);
+            return;
+        }
 
-        // Efeito visual: flash verde no novo nó
-        setTimeout(() => {
-            nodes.update({
-                id: novoNodeId,
-                color: { background: 'rgba(74, 222, 128, 0.2)', border: '#4ade80' }
-            });
+        const dados = await resposta.json();
+
+        let conectouComAlgo = false;
+        let novoNodeId = proximoId;
+        let novasArestas = [];
+        let maiorSimilaridade = 0;
+        let feedbackFinal = 'frio';
+
+        for (const resultado of dados.resultados) {
+            if (resultado.similaridade > maiorSimilaridade) {
+                maiorSimilaridade = resultado.similaridade;
+                feedbackFinal = resultado.feedback;
+            }
+
+            if (resultado.conectou) {
+                conectouComAlgo = true;
+                const nodeAlvo = nosExistentes.find(n => n.label === resultado.palavra_alvo);
+                if (nodeAlvo) {
+                    const arestaConfig = {
+                        from: novoNodeId,
+                        to: nodeAlvo.id,
+                        font: { align: 'top', size: 10 }
+                    };
+                    if (mostrarPorcentagem) {
+                        arestaConfig.label = resultado.similaridade + '%';
+                    }
+                    novasArestas.push(arestaConfig);
+
+                    registroLinks.push({
+                        de: palavraJogada,
+                        para: resultado.palavra_alvo,
+                        pct: resultado.similaridade
+                    });
+                }
+            }
+        }
+
+        setLoading(false);
+
+        // Adicionar nó ao grafo
+        nodes.add({
+            id: novoNodeId,
+            label: palavraJogada,
+            color: { background: '#2a2a3e', border: '#888' },
+            font: { color: '#e0e0e0' },
+            borderWidth: 1
+        });
+        proximoId++;
+        totalJogadas++;
+        document.getElementById('contador-jogadas').textContent = totalJogadas;
+        atualizarContagem();
+
+        if (conectouComAlgo) {
+            edges.add(novasArestas);
+            atualizarListaLinks();
+            atualizarMenorDistancia();
+
+            // Efeito visual: flash verde no novo nó
             setTimeout(() => {
                 nodes.update({
                     id: novoNodeId,
-                    color: { background: '#2a2a3e', border: '#888' }
+                    color: { background: 'rgba(74, 222, 128, 0.2)', border: '#4ade80' }
                 });
-            }, 600);
-        }, 100);
+                setTimeout(() => {
+                    nodes.update({
+                        id: novoNodeId,
+                        color: { background: '#2a2a3e', border: '#888' }
+                    });
+                }, 600);
+            }, 100);
 
-        mostrarToast(`"${palavraJogada}" conectou! (${maiorSimilaridade}%)`, 'sucesso');
+            mostrarToast(`"${palavraJogada}" conectou! (${maiorSimilaridade}%)`, 'sucesso');
 
-        // Verificar vitória
-        const resultado = verificarVitoria();
-        if (resultado) {
-            if (resultado.tooShort) {
-                mostrarToast(
-                    `Ponte muito curta! Precisa de pelo menos 2 palavras intermediárias.`, 
-                    'morno'
-                );
-            } else {
-                setTimeout(() => mostrarVitoria(resultado.labels), 800);
+            // Verificar vitória
+            const resultado = verificarVitoria();
+            if (resultado) {
+                if (resultado.tooShort) {
+                    mostrarToast(
+                        `Ponte muito curta! Precisa de pelo menos 2 palavras intermediárias.`,
+                        'morno'
+                    );
+                } else {
+                    setTimeout(() => mostrarVitoria(resultado.labels), 800);
+                }
             }
+        } else {
+            mostrarToast(`"${palavraJogada}" adicionada ao tabuleiro (sem conexões fortes).`, 'info');
         }
-    } else {
-        // Sem mensagem de rejeição, apenas confirmar que foi para o tabuleiro
-        mostrarToast(`"${palavraJogada}" adicionada ao tabuleiro (sem conexões fortes).`, 'info');
-    }
 
-    inputEl.value = '';
-    inputEl.focus();
+        inputEl.value = '';
+        inputEl.focus();
+
+    } catch (erro) {
+        setLoading(false);
+        mostrarToast('Erro ao conectar com a API. O servidor está rodando?', 'erro');
+        console.error(erro);
+    }
 }
 
 // ========== EVENT LISTENERS ==========
